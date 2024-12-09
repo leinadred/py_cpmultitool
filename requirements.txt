@@ -1,0 +1,9 @@
+cp-mgmt-api-sdk
+et-xmlfile 
+numpy 
+openpyxl
+pandas
+python-dateutil
+pytz
+six
+tzdata

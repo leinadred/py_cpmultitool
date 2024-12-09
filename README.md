@@ -3,13 +3,16 @@
 
 usage: cp-multitool.py [-h] [-H API_SERVER] [-U API_USER] [-K] [-P API_PWD] [-C API_CONTEXT] [-p POLNAME] [-f CFILTER] [-o OUTFILE] [-e EXPORTSELECT] [-v] {show,export,test} ...
 
+
 positional arguments:
+
   {show,export,test}    Tell what to do (test || show || export)
     show                Print given information / objects and their properties (use with caution)
     export              Save output of given information / objects and their properties to a file
     test                Basic connectivity test and (if successful) fetch some information from server
 
 options:
+
   -h, --help            show this help message and exit
   -H API_SERVER, --api_server API_SERVER
                         Target Host (CP Management Server)

@@ -47,3 +47,9 @@ options:
   -v, --verbose         Run Script with informational (-v) or debugging (-vv) logging output. For troubleshooting purposes.
 
 ```
+
+
+## Features that might (!) come
+
+- show/export unused objects
+- show/export zerohit rules from given rulebase

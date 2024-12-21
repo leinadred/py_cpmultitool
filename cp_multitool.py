@@ -243,7 +243,7 @@ else:
             api_user = input("Enter Check Point API Username:")
         else:
             api_user = ""
-            logging.warning("No API User given - expecting API Key authentication")
+            logging.info("No API User given - expecting API Key authentication")
 
 # check if api_pwd is given inside file or cli arguments. cli args override
 if not args.api_pwd is None:
@@ -310,7 +310,6 @@ if cmd in ["show", "export"]:
                         Please add -p 'policy name' (i.e. 'Standard network')"""
                     )
             case "unused-objects":
-                # future use
                 apicommand = "show-unused-objects"
             case "services":
                 # future use
@@ -975,6 +974,9 @@ def fun_objectwork(objects, apicommand, exportselect):
                     else:
                         row.append(o[field])
         rows.append(row)
+    
+    logging.debug("OK - Work is done, moving on to create output")
+    logging.info("OK - Work is done, moving on to create output (%s lines)",len(rows))
     return rows, fieldnames
 
 

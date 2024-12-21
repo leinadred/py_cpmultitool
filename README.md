@@ -48,8 +48,7 @@ options:
 
 ```
 
-
 ## Features that might (!) come
 
-- show/export unused objects
-- show/export zerohit rules from given rulebase
+- [x] show/export unused objects
+- [ ] show/export zerohit rules from given rulebase

@@ -39,44 +39,38 @@ python cp_multitool.py -f auto_feed -e name,uid,comments,creator show networks
   - filtered by "auto_feed" in attribute name, comments
   - prints attributes "name", "uid", "comments" and "creator"
 
-### description of arguments:
+### description of arguments
 
 #### command line arguments
 
- -h: printing built in Help
- -H: Check Point Management Server to talk to
- -U: admin username - for all functionalities a "Read Only" permission is enough - but for "test". "show session" seems to be something "special"
- -K: set, when using API Key (with no user). Otherwise you will be asked for a user to enter (leaving blank works too, but when executing automatically...)
- -P: -U-admin´s password or API Key.
- -p: Name of policy you want to export. will be removed later, as it is easier to use third positional argument
- -f: filter content by this (uses fields "name, tags, comments")
- -o: set destination filename to write "export" into (format will differ, if pandas is installed and filename contains .xlsx, excel file will be written. otherwise CSV)
- -v: add verbosity, some small hints, where the script is working on
- -vv: more verbosity
+- -h: printing built in Help
+- -H: Check Point Management Server to talk to
+- -U: admin username - for all functionalities a "Read Only" permission is enough - but for "test". "show session" seems to be something "special"
+- -K: set, when using API Key (with no user). Otherwise you will be asked for a user to enter (leaving blank works too, but when executing automatically...)
+- -P: -U-admin´s password or API Key.
+- -p: Name of policy you want to export. will be removed later, as it is easier to use third positional argument (export policy "diedsas network")
+- -f: filter content by this (uses fields "name, tags, comments")
+- -o: set destination filename to write "export" into (format will differ, if pandas is installed and filename contains .xlsx, excel file will be written. otherwise CSV)
+- -v: add verbosity, some small hints, where the script is working on
+- -vv: more verbosity
 
 #### positional arguments
 
-first:
-
-- show / export / test
-
-second:
-
-- what to show/export
-  - packages, package, policy, hosts, networks, host, network, gateway, cluster, gateways, clusters, unused-objects, uo-content
-
-- name of object
-  - i.e. policy name, host name, gateway name etc. (if applicable)
-  
+- first:
+  - show / export / test
+- second:
+  - what to show/export
+    - packages, package, policy, hosts, networks, host, network, gateway, cluster, gateways, clusters, unused-objects, uo-content
+- third (optional)
+  - name of object
+    - i.e. policy name, host name, gateway name etc. (if applicable)
 
 ![alt text](py_cpmultitool.jpeg "kind of a command structure")
 
-
-## Important:
+## Important
 
 - positional arguments have to be in exact order (first, second (third))
 - first command line arguments, THEN positional arguments
-
 
 ## built-in help
 

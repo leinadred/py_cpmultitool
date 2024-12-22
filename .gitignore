@@ -170,3 +170,4 @@ ignore_*
 .vscode
 .vscode/
 .vscode/*
+ignore_*

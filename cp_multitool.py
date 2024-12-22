@@ -59,6 +59,9 @@ supported_commands = [
     "show-hosts",
     "show-groups",
     "show-networks",
+    "show-host",
+    "show-group",
+    "show-network",
     "show-services",
     "show-access-rulebase",
     "show-packages",
@@ -144,8 +147,11 @@ parser_show.add_argument(
     dest="choice",
     choices=[
         "hosts",
+        "host",
         "groups",
+        "group",
         "networks",
+        "network",
         "services",
         "policy",
         "unused-objects",
@@ -163,8 +169,11 @@ parser_export.add_argument(
     dest="choice",
     choices=[
         "hosts",
+        "host",
         "groups",
+        "group",
         "networks",
+        "network",
         "services",
         "policy",
         "unused-objects",
@@ -296,6 +305,14 @@ if cmd in ["show", "export"]:
                 apicommand = "show-groups"
             case "networks":
                 apicommand = "show-networks"
+            case "groups":
+                apicommand = "show-groups"
+            case "host":
+                apicommand = "show-host"
+            case "network":
+                apicommand = "show-network"
+            case "group":
+                apicommand = "show-group"
             case "packages":
                 apicommand = "show-packages"
             case "package":
@@ -509,6 +526,24 @@ def fun_build_request():
             elif cfilter:
                 request = { "details-level": "full", "filter": cfilter}
 
+        case "show-host":
+            if args.objectname:
+                request = { "details-level": "full", "name": args.objectname}
+            elif cfilter:
+                request = { "details-level": "full", "filter": cfilter}
+
+        case "show-network":
+            if args.objectname:
+                request = { "details-level": "full", "name": args.objectname}
+            elif cfilter:
+                request = { "details-level": "full", "filter": cfilter}
+
+        case "show-group":
+            if args.objectname:
+                request = { "details-level": "full", "name": args.objectname}
+            elif cfilter:
+                request = { "details-level": "full", "filter": cfilter}
+
         case _:
             if cfilter:
                 request = {"details-level": "full", "filter": cfilter}
@@ -566,251 +601,41 @@ def fun_apicomm(request, command):
 
 def fun_objectwork(objects, apicommand, exportselect):
     """working with extracted objects"""
-    if not exportselect is None:
+    meta=[
+            "last-modify-time",
+            "last-modifier",
+            "creation-time",
+            "creator"
+            ]
+
+    if apicommand == "show-packages":
+        objects = objects["packages"]
+    try:
+        objects[0]["uid"]
+    except KeyError:
+        try:
+            objects["uid"]
+        except KeyError as e:
+            sys.exit("Failure %s in parsing output\n%s",e, objects)
+        else:
+            allowed = list(objects.keys()) + meta
+    else:
+        allowed = list(objects[0].keys()) + meta
+    if not exportselect in [None,"all"]:
         # checking wanted output values
+        fieldnames=[]
         exportselect = exportselect.replace(" ", "").split(",")
         for value in exportselect:
-            match apicommand:
-                # check, if wanted fields will exist in output
-                case "show-hosts":
-                    allowed = [
-                        "name",
-                        "type",
-                        "ipv4-address",
-                        "groups",
-                        "icon",
-                        "color",
-                        "comments",
-                        "uid",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator"
-                        ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case "show-networks":
-                    allowed = ["name",
-                        "type",
-                        "subnet",
-                        "subnet-mask",
-                        "mask-length4",
-                        "groups",
-                        "icon",
-                        "color",
-                        "comments",
-                        "uid",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator"]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case "show-groups":
-                    allowed = [
-                        "name",
-                        "type",
-                        "groups",
-                        "icon",
-                        "color",
-                        "comments",
-                        "members"
-                        "uid",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator"
-                        ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case "show-unused-objects":
-                    allowed=[
-                        "name",
-                        "type",
-                        "groups",
-                        "icon",
-                        "color",
-                        "comments",
-                        "uid",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator",
-                    ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case apicommand if apicommand.startswith("show-service"):
-                    allowed = [
-                        "name",
-                        "type",
-                        "groups",
-                        "icon",
-                        "color",
-                        "comments",
-                        "uid",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator"
-                    ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case apicommand if apicommand.startswith("show-updatable-objects"):
-                    allowed = [
-                        "name-in-updatable-objects-repository",
-                        "uri",
-                        "info-text",
-                        "description",
-                        "info-url",
-                        "uid-in-updatable-objects-repository"
-                        ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case apicommand if apicommand.startswith("show-simple-gateway"):
-                    allowed = [
-                        "name",
-                        "uid",
-                        "type",
-                        "hardware",
-                        "platform",
-                        "os-name",
-                        "version",
-                        "ipv4-address",
-                        "sic-state",
-                        "network-policy-management",
-                        "log-server",
-                        "firewall",
-                        "vpn",
-                        "policy-server",
-                        "mobile-access",
-                        "legacy-url-filtering",
-                        "monitoring",
-                        "anti-spam-and-email-security",
-                        "application-control",
-                        "url-filtering",
-                        "threat-prevention-mode",
-                        "ips",
-                        "threat-emulation",
-                        "threat-extraction",
-                        "data-loss-prevention",
-                        "qos",
-                        "anti-bot",
-                        "anti-virus",
-                        "content-awareness",
-                        "zero-phishing",
-                        "save-logs-locally",
-                        "send-alerts-to-server",
-                        "send-logs-to-server",
-                        "send-logs-to-backup-server",
-                        "logs-settings",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator"
-                    ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case apicommand if apicommand.startswith("show-simple-cluster"):
-                    allowed = [
-                        "name",
-                        "uid",
-                        "type",
-                        "platform",
-                        "os-name",
-                        "version",
-                        "ipv4-address",
-                        "network-policy-management",
-                        "log-server",
-                        "firewall",
-                        "vpn",
-                        "policy-server",
-                        "mobile-access",
-                        "legacy-url-filtering",
-                        "monitoring",
-                        "anti-spam-and-email-security",
-                        "application-control",
-                        "url-filtering",
-                        "threat-prevention-mode",
-                        "ips",
-                        "threat-emulation",
-                        "threat-extraction",
-                        "data-loss-prevention",
-                        "qos",
-                        "anti-bot",
-                        "anti-virus",
-                        "content-awareness",
-                        "zero-phishing",
-                        "save-logs-locally",
-                        "send-alerts-to-server",
-                        "send-logs-to-server",
-                        "send-logs-to-backup-server",
-                        "logs-settings",
-                        "tags",
-                        "last-modify-time",
-                        "last-modifier",
-                        "creation-time",
-                        "creator"
-                    ]
-                    if value == "all":
-                        fieldnames = allowed
-                    elif not value in allowed:
-                        sys.exit(
-                            f"""ERROR with exportselect argument {value}, please correct!
-                            May be ({allowed})"""
-                        )
-
-                case _:
-                    pass
-        if not exportselect == ['all']:
-            fieldnames = exportselect
+            if not value in allowed:
+                sys.exit(
+                    f"""ERROR with exportselect argument {value}, please correct!
+                    May be ({allowed}) or "all" - example -e name,uid,creator
+                    """
+                )
+            else:
+                fieldnames.append(value)
+    elif not exportselect == ['all']:
+        fieldnames = allowed
     else:
         # default tables
         match apicommand:
@@ -877,6 +702,10 @@ def fun_objectwork(objects, apicommand, exportselect):
                     "comments",
                     "tags",
                     "uid",
+                    "last-modify-time",
+                    "last-modifier",
+                    "creation-time",
+                    "creator",
                 ]
             case apicommand if apicommand.startswith("show-updatable-objects"):
                 fieldnames = [
@@ -886,6 +715,10 @@ def fun_objectwork(objects, apicommand, exportselect):
                     "description",
                     "info-url",
                     "uid-in-updatable-objects-repository",
+                    "last-modify-time",
+                    "last-modifier",
+                    "creation-time",
+                    "creator",
                 ]
             case apicommand if apicommand.startswith("show-simple-gateway"):
                 fieldnames = [
@@ -896,7 +729,11 @@ def fun_objectwork(objects, apicommand, exportselect):
                     "os-name",
                     "version",
                     "ipv4-address",
-                    "sic-state"
+                    "sic-state",
+                    "last-modify-time",
+                    "last-modifier",
+                    "creation-time",
+                    "creator",
                 ]
             case apicommand if apicommand.startswith("show-simple-cluster"):
                 fieldnames = [
@@ -906,100 +743,129 @@ def fun_objectwork(objects, apicommand, exportselect):
                     "platform",
                     "os-name",
                     "version",
-                    "ipv4-address"
+                    "ipv4-address",
+                    "last-modify-time",
+                    "last-modifier",
+                    "creation-time",
+                    "creator",
                 ]
-    if apicommand == "show-simple-gateway" or apicommand == "show-simple-cluster":
-        row = []
-        for field in fieldnames:
-            try:
-                rows
-            except NameError:
-                rows = []
-                rows.append(fieldnames)
-            row.append(objects[field])
-        rows.append(row)
-    else:
-        for o in objects:
-            row = []
-            try:
-                rows
-            except NameError:
-                rows = []
-                rows.append(fieldnames)
-            for field in fieldnames:
-                match field:
-                    case "groups":
-                        groups = []
-                        for group in o["groups"]:
-                            groups.append(group["name"])
-                        row.append(groups)
-                    case "tags":
-                        tags = []
-                        for tag in o["tags"]:
-                            tags.append(tag["name"])
-                        row.append(tags)
+            case apicommand if apicommand.startswith("show-host"):
+                fieldnames = [
+                    "name",
+                    "uid",
+                    "type",
+                    "comments",
+                    "ipv4-address",
+                    "last-modify-time",
+                    "last-modifier",
+                    "creation-time",
+                    "creator",
+                ]
+            case apicommand if apicommand.startswith("show-group"):
+                fieldnames = [
+                    "name",
+                    "uid",
+                    "type",
+                    "comments",
+                    "members",
+                    "last-modify-time",
+                    "last-modifier",
+                    "creation-time",
+                    "creator",
+                ]
+            case _:
+                fieldnames = allowed
 
-                    case "last-modify-time":
-                        row.append(o["meta-info"]["last-modify-time"]["iso-8601"])
-                    case "last-modifier":
-                        row.append(o["meta-info"]["last-modifier"])
-                    case "creation-time":
-                        row.append(o["meta-info"]["creation-time"]["iso-8601"])
-                    case "creator":
-                        row.append(o["meta-info"]["creator"])
-                    case "subnet":
+    if apicommand in [
+        "show-simple-gateway",
+        "show-simple-cluster",
+        "show-package",
+        "show-host",
+        "show-network",
+        "show-group"
+        ]:
+        objects = [objects]
+    for o in objects:
+        row = []
+        try:
+            rows
+        except NameError:
+            rows = []
+            rows.append(fieldnames)
+        for field in fieldnames:
+            match field:
+                case "groups":
+                    groups = []
+                    for group in o["groups"]:
+                        groups.append(group["name"])
+                    row.append(groups)
+                case "tags":
+                    tags = []
+                    for tag in o["tags"]:
+                        tags.append(tag["name"])
+                    row.append(tags)
+
+                case "last-modify-time":
+                    row.append(o["meta-info"]["last-modify-time"]["iso-8601"])
+                case "last-modifier":
+                    row.append(o["meta-info"]["last-modifier"])
+                case "creation-time":
+                    row.append(o["meta-info"]["creation-time"]["iso-8601"])
+                case "creator":
+                    row.append(o["meta-info"]["creator"])
+                case "subnet":
+                    try:
+                        o["subnet4"]
+                    except Exception:
                         try:
-                            o["subnet4"]
-                        except Exception:
-                            try:
-                                o["subnet6"]
-                            except Exception as e:
-                                logging.debug(
-                                    "FAILURE: configured to use subnet fields, but none found"
-                                )
-                                raise SystemError from e
-                            else:
-                                row.append(o["subnet6"])
-                        else:
-                            row.append(o["subnet4"])
-                    case "subnet-mask":
-                        try:
-                            o["mask-length4"]
+                            o["subnet6"]
                         except Exception as e:
+                            logging.debug(
+                                "FAILURE: configured to use subnet fields, but none found"
+                            )
+                            raise SystemError from e
+                        else:
+                            row.append(o["subnet6"])
+                    else:
+                        row.append(o["subnet4"])
+                case "subnet-mask":
+                    try:
+                        o["mask-length4"]
+                    except Exception as e:
+                        try:
+                            o["mask-length6"]
+                        except:
+                            logging.debug(
+                                "FAILURE: no subnet mask / length fields found"
+                            )
+                            raise SystemError from e
+                        else:
+                            row.append(o["mask-length6"])
+                    else:
+                        row.append(o["mask-length4"])
+                case "members":
+                    members = []
+                    for member in o["members"]:
+                        members.append(member["name"])
+                    row.append(members)
+                case _:
+                    try:
+                        o[field]
+                    except:
+                        if apicommand.startswith("show-updatable-objects"):
                             try:
-                                o["mask-length6"]
+                                row.append(o["additional-properties"][field])
                             except:
                                 logging.debug(
-                                    "FAILURE: no subnet mask / length fields found"
+                                    "FAILURE: no additional-properties fields found"
                                 )
-                                raise SystemError from e
                             else:
-                                row.append(o["mask-length6"])
+                                pass
                         else:
-                            row.append(o["mask-length4"])
-                    case "members":
-                        members = []
-                        for member in o["members"]:
-                            members.append(member["name"])
-                        row.append(members)
-                    case _:
-                        try:
-                            o[field]
-                        except:
-                            if apicommand.startswith("show-updatable-objects"):
-                                try:
-                                    row.append(o["additional-properties"][field])
-                                except:
-                                    logging.debug(
-                                        "FAILURE: no additional-properties fields found"
-                                    )
-                                else:
-                                    pass
-                            else:
-                                row.append("N/A")
-                        else:
-                            row.append(o[field])
-            rows.append(row)
+                            row.append("N/A")
+                    else:
+                        row.append(o[field])
+        rows.append(row)
         
     logging.debug("OK - Work is done, moving on to create output")
     logging.info("OK - Work is done, moving on to create output (%s line/-s)",len(rows)-1)
@@ -1036,55 +902,74 @@ def fun_policywork(rulebase, policy, objects):
                 len(line["rulebase"]),
             ]
             policy.append(f)
-        try:
-            rbase=line["rulebase"]
-        except:
-            logging.debug("%s seems to be an empty section", {line['name']})
-        else:
-            for rule in rbase:
-                f=fun_readpolicy(rule, objects)
-                policy.append(f)
-                try:
-                    rule["inline-layer"]
-                except:
-                    pass
-                else:
-                    for a in objects:
-                        inlinecontent = {"details-level":"full"}
-                        if a["uid"]==rule["inline-layer"]:
-                            inlinecontent["name"]=a["name"]
-                            break
-                    inlinebase=fun_apicomm(inlinecontent,"show-access-rulebase").data
-                    il_rulebase=inlinebase["rulebase"]
-                    for items in inlinebase["objects-dictionary"]:
-                        objects.append(items)
-                    while not inlinebase["to"] == inlinebase["total"]:
-                        inlinecontent["offset"]=inlinebase["to"]
-                        inlinebase=fun_apicomm(inlinecontent,"show-access-rulebase")
-                        for items in inlinebase["rulebase"]:
-                            il_rulebase.append(items)
+            try:
+                rbase=line["rulebase"]
+            except:
+                logging.debug("%s seems to be an empty section", {line['name']})
+                pass
+            else:
+                for rule in rbase:
+                    f=fun_readpolicy(rule, objects)
+                    policy.append(f)
+                    try:
+                        rule["inline-layer"]
+                    except:
+                        pass
+                    else:
+                        for a in objects:
+                            inlinecontent = {"details-level":"full"}
+                            if a["uid"]==rule["inline-layer"]:
+                                inlinecontent["name"]=a["name"]
+                                break
+                        inlinebase=fun_apicomm(inlinecontent,"show-access-rulebase").data
+                        il_rulebase=inlinebase["rulebase"]
                         for items in inlinebase["objects-dictionary"]:
                             objects.append(items)
-                    for r in il_rulebase:
-                        if r["type"]=="access-section":
-                            f=["section","",r["name"],"","","","","","","","","","","","","","","","","","Length:"+str(len(r["rulebase"]))]
-                            policy.append(f)
-                            for subrule in r["rulebase"]:
+                        while not inlinebase["to"] == inlinebase["total"]:
+                            inlinecontent["offset"]=inlinebase["to"]
+                            inlinebase=fun_apicomm(inlinecontent,"show-access-rulebase")
+                            for items in inlinebase["rulebase"]:
+                                il_rulebase.append(items)
+                            for items in inlinebase["objects-dictionary"]:
+                                objects.append(items)
+                        for r in il_rulebase:
+                            if r["type"]=="access-section":
+                                f=[
+                                    "section",
+                                    "",
+                                    r["name"],
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "Length:"+str(len(r["rulebase"]))
+                                    ]
+                                policy.append(f)
+                                for subrule in r["rulebase"]:
+                                    subrule["rule-number"]=f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
+                                    f=fun_readpolicy(
+                                        subrule, 
+                                        objects)
+                                    policy.append(f)
+                            elif r["type"]=="access-rule":
+                                subrule=r
                                 subrule["rule-number"]=f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
                                 f=fun_readpolicy(subrule, objects)
                                 policy.append(f)
-                        elif r["type"]=="access-rule":
-                            subrule=r
-                            subrule["rule-number"]=f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
-                            f=fun_readpolicy(subrule, objects)
-                            policy.append(f)
-        if line["type"]=="access-rule":
-            rbase=line
-            for rule in line:
-                f = fun_readpolicy(rule, objects)
-                policy.append(f)
-        if line["type"]=="access-rule":
-            rbase=line
+
         elif line["type"] == "access-rule":
             f = fun_readpolicy(line, objects)
             policy.append(f)
@@ -1577,7 +1462,7 @@ def fun_writepolicy(policy, objects):
                     cell.alignment = Alignment(wrap_text=True, vertical="top")
                     maxlen = max(maxlen, get_max_char_per_line(cell))
                 # Setze die Spaltenbreite basierend auf der maximalen Zeichenanzahl pro Zeile
-                sheet.column_dimensions[get_column_letter(i)].width = maxlen
+                sheet.column_dimensions[get_column_letter(i)].width = maxlen+5
 
             # formatting section lines
             fsectionrow = PatternFill(fill_type="solid", bgColor="ffff6347")
@@ -1776,7 +1661,7 @@ def fun_writeobjects(rows, fieldnames):
 
 
 ###########################################################################################
-# Functions
+
 if __name__ == "__main__":
     if api_context is None:
         client_args = APIClientArgs(server=api_server, unsafe="True")
@@ -1833,10 +1718,10 @@ Please check arguments / server to connect / connectivity!"""
             policy = []
             fun_policywork(rulebase, policy, objects)
             fun_writepolicy(policy, objects)
-        elif apicommand == "show-packages":
-            fun_printresult(fun_apicomm(content, apicommand).data["packages"])
-        elif apicommand == "show-package":
-            fun_printresult(fun_apicomm(content, apicommand))
+        # elif apicommand == "show-packages":
+        #     fun_printresult(fun_apicomm(content, apicommand).data["packages"])
+        # elif apicommand == "show-package":
+        #     fun_printresult(fun_apicomm(content, apicommand))
         elif apicommand == "show-session":
             fun_printresult(fun_apicomm(content, apicommand))
         elif apicommand in supported_commands:
@@ -1888,10 +1773,8 @@ Please check arguments / server to connect / connectivity!"""
                                          Allowed options are: {servicetypes}.
                                          Using a service type is mandatory"""
                                 )
-
-#            content["offset"] = 0
-            tmp = fun_apicomm(content, apicommand).data
-            if not apicommand == "show-simple-gateway" and not apicommand == "show-simple-cluster":
+            elif apicommand in ["show-simple-gateway","show-simple-cluster","show-packages","show-package"]:
+                tmp = fun_apicomm(content, apicommand).data
                 objects = tmp["objects"]
                 if not len(objects) == 0:
                     while not tmp["to"] == tmp["total"]:
@@ -1904,9 +1787,26 @@ Please check arguments / server to connect / connectivity!"""
                     fun_writeobjects(rows, fieldnames)
                 else:
                     print(f"empty Response for {apicommand}")
-            else:
+            elif apicommand in ["show-host","show-network","show-group"]:
+                tmp = fun_apicomm(content, apicommand).data
                 objects = tmp
                 rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
                 fun_writeobjects(rows, fieldnames)
+            else:
+                tmp = fun_apicomm(content, apicommand).data
+                objects = tmp["objects"]
+                if not len(objects) == 0:
+                    while not tmp["to"] == tmp["total"]:
+                        conttemp = content
+                        conttemp["offset"] = tmp["to"]
+                        tmp = fun_apicomm(conttemp, apicommand).data
+                        for o in tmp["objects"]:
+                            objects.append(o)
+                    rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
+                    fun_writeobjects(rows, fieldnames)
+                else:
+                    sys.exit(f"empty Response for {apicommand}")
+                # rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
+                # fun_writeobjects(rows, fieldnames)
         else:
             sys.exit("Given arguments are not supported (yet). See Manual/Readme/help")

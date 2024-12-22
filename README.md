@@ -48,6 +48,9 @@ options:
 
 ```
 
+![alt text](py_cpmultitool.jpeg "kind of a command structure")
+
+
 ## Features that might (!) come
 
 - [x] show/export unused objects

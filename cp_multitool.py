@@ -322,6 +322,10 @@ if cmd in ["show", "export"]:
                 apicommand = "show-simple-clusters"
             case "gateways":
                 apicommand = "show-simple-gateways"
+            case "cluster":
+                apicommand = "show-simple-cluster"
+            case "gateway":
+                apicommand = "show-simple-gateway"
             case other:
                 sys.exit("unclear, what to do (variable choice undefined or incorrect)")
 elif cmd == "test":
@@ -494,6 +498,17 @@ def fun_build_request():
             request = {"name": args.objectname}
         case "test":
             request = {}
+        case "show-simple-gateway":
+            if args.objectname:
+                request = {"details-level": "full", "name": args.objectname}
+            elif cfilter:
+                request = {"details-level": "full", "filter": cfilter}
+        case "show-simple-cluster":
+            if args.objectname:
+                request = { "details-level": "full", "name": args.objectname}
+            elif cfilter:
+                request = { "details-level": "full", "filter": cfilter}
+
         case _:
             if cfilter:
                 request = {"details-level": "full", "filter": cfilter}
@@ -893,90 +908,101 @@ def fun_objectwork(objects, apicommand, exportselect):
                     "version",
                     "ipv4-address"
                 ]
-    for o in objects:
+    if apicommand == "show-simple-gateway" or apicommand == "show-simple-cluster":
         row = []
-        try:
-            rows
-        except NameError:
-            rows = []
-            rows.append(fieldnames)
         for field in fieldnames:
-            match field:
-                case "groups":
-                    groups = []
-                    for group in o["groups"]:
-                        groups.append(group["name"])
-                    row.append(groups)
-                case "tags":
-                    tags = []
-                    for tag in o["tags"]:
-                        tags.append(tag["name"])
-                    row.append(tags)
-
-                case "last-modify-time":
-                    row.append(o["meta-info"]["last-modify-time"]["iso-8601"])
-                case "last-modifier":
-                    row.append(o["meta-info"]["last-modifier"])
-                case "creation-time":
-                    row.append(o["meta-info"]["creation-time"]["iso-8601"])
-                case "creator":
-                    row.append(o["meta-info"]["creator"])
-                case "subnet":
-                    try:
-                        o["subnet4"]
-                    except NameError:
-                        try:
-                            o["subnet6"]
-                        except NameError as e:
-                            logging.debug(
-                                "FAILURE: configured to use subnet fields, but none found"
-                            )
-                            raise SystemError from e
-                        else:
-                            row.append(o["subnet6"])
-                    else:
-                        row.append(o["subnet4"])
-                case "subnet-mask":
-                    try:
-                        o["mask-length4"]
-                    except NameError as e:
-                        try:
-                            o["mask-length6"]
-                        except:
-                            logging.debug(
-                                "FAILURE: no subnet mask / length fields found"
-                            )
-                            raise SystemError from e
-                        else:
-                            row.append(o["mask-length6"])
-                    else:
-                        row.append(o["mask-length4"])
-                case "members":
-                    members = []
-                    for member in o["members"]:
-                        members.append(member["name"])
-                    row.append(members)
-                case _:
-                    try:
-                        o[field]
-                    except KeyError:
-                        if apicommand.startswith("show-updatable-objects"):
-                            try:
-                                row.append(o["additional-properties"][field])
-                            except NameError:
-                                logging.debug(
-                                    "FAILURE: no additional-properties fields found"
-                                )
-                            else:
-                                pass
-                        else:
-                            row.append("N/A")
-                    else:
-                        row.append(o[field])
+            try:
+                rows
+            except NameError:
+                rows = []
+                rows.append(fieldnames)
+            row.append(objects[field])
         rows.append(row)
-    
+    else:
+        for o in objects:
+            row = []
+            try:
+                rows
+            except NameError:
+                rows = []
+                rows.append(fieldnames)
+            for field in fieldnames:
+                match field:
+                    case "groups":
+                        groups = []
+                        for group in o["groups"]:
+                            groups.append(group["name"])
+                        row.append(groups)
+                    case "tags":
+                        tags = []
+                        for tag in o["tags"]:
+                            tags.append(tag["name"])
+                        row.append(tags)
+
+                    case "last-modify-time":
+                        row.append(o["meta-info"]["last-modify-time"]["iso-8601"])
+                    case "last-modifier":
+                        row.append(o["meta-info"]["last-modifier"])
+                    case "creation-time":
+                        row.append(o["meta-info"]["creation-time"]["iso-8601"])
+                    case "creator":
+                        row.append(o["meta-info"]["creator"])
+                    case "subnet":
+                        try:
+                            o["subnet4"]
+                        except Exception:
+                            try:
+                                o["subnet6"]
+                            except Exception as e:
+                                logging.debug(
+                                    "FAILURE: configured to use subnet fields, but none found"
+                                )
+                                raise SystemError from e
+                            else:
+                                row.append(o["subnet6"])
+                        else:
+                            row.append(o["subnet4"])
+                    case "subnet-mask":
+                        try:
+                            o["mask-length4"]
+                        except Exception as e:
+                            try:
+                                o["mask-length6"]
+                            except:
+                                logging.debug(
+                                    "FAILURE: no subnet mask / length fields found"
+                                )
+                                raise SystemError from e
+                            else:
+                                row.append(o["mask-length6"])
+                        else:
+                            row.append(o["mask-length4"])
+                    case "members":
+                        members = []
+                        for member in o["members"]:
+                            members.append(member["name"])
+                        row.append(members)
+                    case _:
+                        try:
+                            o[field]
+                        except:
+                            if apicommand.startswith("show-updatable-objects"):
+                                try:
+                                    row.append(o["additional-properties"][field])
+                                except:
+                                    logging.debug(
+                                        "FAILURE: no additional-properties fields found"
+                                    )
+                                else:
+                                    pass
+                            else:
+                                row.append("N/A")
+                        else:
+                            row.append(o[field])
+            rows.append(row)
+        
     logging.debug("OK - Work is done, moving on to create output")
-    logging.info("OK - Work is done, moving on to create output (%s lines)",len(rows))
+    logging.info("OK - Work is done, moving on to create output (%s line/-s)",len(rows)-1)
     return rows, fieldnames
 
 
@@ -1732,6 +1758,7 @@ def fun_writeobjects(rows, fieldnames):
                 pandas.DataFrame(rows[1:], columns=fieldnames).to_excel(
                     writer, index=False, sheet_name=args.choice
                 )
+                print(f"Information have been written to {outfile} - DONE!")
         else:
             with open(outfile, "w", newline="", encoding="utf-8") as output:
                 writer = csv.writer(
@@ -1743,7 +1770,6 @@ def fun_writeobjects(rows, fieldnames):
     else:
         if "pandas" in sys.modules:
             print(pandas.DataFrame(rows[1:], columns=fieldnames))
-            print(f"Information have been written to {outfile} - DONE!")
         else:
             for row in rows:
                 print(row)
@@ -1865,17 +1891,22 @@ Please check arguments / server to connect / connectivity!"""
 
 #            content["offset"] = 0
             tmp = fun_apicomm(content, apicommand).data
-            objects = tmp["objects"]
-            if not len(objects) == 0:
-                while not tmp["to"] == tmp["total"]:
-                    conttemp = content
-                    conttemp["offset"] = tmp["to"]
-                    tmp = fun_apicomm(conttemp, apicommand).data
-                    for o in tmp["objects"]:
-                        objects.append(o)
+            if not apicommand == "show-simple-gateway" and not apicommand == "show-simple-cluster":
+                objects = tmp["objects"]
+                if not len(objects) == 0:
+                    while not tmp["to"] == tmp["total"]:
+                        conttemp = content
+                        conttemp["offset"] = tmp["to"]
+                        tmp = fun_apicomm(conttemp, apicommand).data
+                        for o in tmp["objects"]:
+                            objects.append(o)
+                    rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
+                    fun_writeobjects(rows, fieldnames)
+                else:
+                    print(f"empty Response for {apicommand}")
+            else:
+                objects = tmp
                 rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
                 fun_writeobjects(rows, fieldnames)
-            else:
-                print(f"empty Response for {apicommand}")
         else:
             sys.exit("Given arguments are not supported (yet). See Manual/Readme/help")

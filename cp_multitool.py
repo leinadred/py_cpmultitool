@@ -1773,21 +1773,27 @@ Please check arguments / server to connect / connectivity!"""
                                          Allowed options are: {servicetypes}.
                                          Using a service type is mandatory"""
                                 )
-            elif apicommand in ["show-simple-gateway","show-simple-cluster","show-packages","show-package"]:
+            elif apicommand in ["show-simple-gateway","show-simple-cluster","show-package"]:
                 tmp = fun_apicomm(content, apicommand).data
-                objects = tmp["objects"]
+                objects = tmp
+                #objects = tmp["objects"]
                 if not len(objects) == 0:
-                    while not tmp["to"] == tmp["total"]:
-                        conttemp = content
-                        conttemp["offset"] = tmp["to"]
-                        tmp = fun_apicomm(conttemp, apicommand).data
-                        for o in tmp["objects"]:
-                            objects.append(o)
+                    # while not tmp["to"] == tmp["total"]:
+                    #     conttemp = content
+                    #     conttemp["offset"] = tmp["to"]
+                    #     tmp = fun_apicomm(conttemp, apicommand).data
+                    #     for o in tmp["objects"]:
+                    #         objects.append(o)
                     rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
                     fun_writeobjects(rows, fieldnames)
                 else:
                     print(f"empty Response for {apicommand}")
             elif apicommand in ["show-host","show-network","show-group"]:
+                tmp = fun_apicomm(content, apicommand).data
+                objects = tmp
+                rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
+                fun_writeobjects(rows, fieldnames)
+            elif apicommand in ["show-packages"]:
                 tmp = fun_apicomm(content, apicommand).data
                 objects = tmp
                 rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)

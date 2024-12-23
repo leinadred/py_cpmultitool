@@ -1725,8 +1725,8 @@ Please check arguments / server to connect / connectivity!"""
             fun_writepolicy(policy, objects)
         # elif apicommand == "show-packages":
         #     fun_printresult(fun_apicomm(content, apicommand).data["packages"])
-        # elif apicommand == "show-package":
-        #     fun_printresult(fun_apicomm(content, apicommand))
+        elif apicommand == "show-package":
+            fun_printresult(fun_apicomm(content, apicommand))
         elif apicommand == "show-session":
             fun_printresult(fun_apicomm(content, apicommand))
         elif apicommand in supported_commands:
@@ -1778,7 +1778,7 @@ Please check arguments / server to connect / connectivity!"""
                                          Allowed options are: {servicetypes}.
                                          Using a service type is mandatory"""
                                 )
-            elif apicommand in ["show-simple-gateway","show-simple-cluster","show-package"]:
+            elif apicommand in ["show-simple-gateway","show-simple-cluster"]:
                 tmp = fun_apicomm(content, apicommand).data
                 objects = tmp
                 #objects = tmp["objects"]

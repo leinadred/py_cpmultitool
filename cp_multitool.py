@@ -1654,7 +1654,12 @@ def fun_writeobjects(rows, fieldnames):
         print(f"Information have been written to {outfile} - DONE!")
     else:
         if "pandas" in sys.modules:
+            pandas.options.display.max_rows = 100 # chosing when to ommit output
+            pandas.options.display.min_rows = None # chosing when to ommit output
             print(pandas.DataFrame(rows[1:], columns=fieldnames))
+            if len(pandas.DataFrame(rows[1:], columns=fieldnames)) > pandas.options.display.max_rows:
+                print(f"""More then {pandas.options.display.max_rows} rows, so output is ommitted!
+Refine filter (-f) or export to file to get the complete result.""")
         else:
             for row in rows:
                 print(row)

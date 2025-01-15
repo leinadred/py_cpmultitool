@@ -1,5 +1,5 @@
 # !/usr/bin/env python3
-"""Script to fetch objects, policies from CP Mgmt Server and putting them into a csv / xls file"""
+"Script to fetch objects, policies from CP Mgmt Server and putting them into a csv / xls file"
 # 2024 - DME
 # Script to fetch objects, policies from CP Mgmt Server and putting them into a csv / xls file
 # https://www.buymeacoffee.com/leinadeuntdomus
@@ -41,7 +41,8 @@ from cpapi import APIClient, APIClientArgs
 #
 #################################################################################################
 # set args (will overriden by command)
-# static environment variables
+# static variables
+# env_file      = ".env-example"
 # api_server    = "cpmgmt"
 # api_user      = "admin"
 # api_pwd       = "superS3curePass"
@@ -74,12 +75,20 @@ supported_commands = [
     "show-simple-gateways",
 ]
 
-parser = argparse.ArgumentParser(epilog=""""
+parser = argparse.ArgumentParser(
+    epilog=""""
 Small tool to show or export items or objects from Check Point Management Servers database
 ike host, networks policy, packages and more.
 More information in github repo:
-https://github.com/leinadred/py_cpmultitool""")
-
+https://github.com/leinadred/py_cpmultitool"""
+)
+parser.add_argument(
+    "-E",
+    "--env",
+    help="Read Arguments Hostname, User, Password/Key, Context, Outfile from given file",
+    type=str,
+    default=None,
+)
 parser.add_argument("-H", "--api_server", help="Target Host (CP Management Server)")
 parser.add_argument("-U", "--api_user", help="API User")
 parser.add_argument(
@@ -191,7 +200,7 @@ parser_show.add_argument(
     nargs="?",
     default=None,
     help="""Name of Object to show (when used command is
-    "show gateway", "show cluster", "show package")"""
+    "show gateway", "show cluster", "show package")""",
 )
 parser_export.add_argument(
     "objectname",
@@ -199,8 +208,8 @@ parser_export.add_argument(
     nargs="?",
     default=None,
     help="""Name of object to export (when using command is 'export policy',
-    "export gateway", "show cluster", "show package") or name of access-rule-base.
-    (when command is 'export policy')"""
+    "export gateway", "export cluster", "export package") or name of access-rule-base.
+    (when command is 'export policy')""",
 )
 
 args = parser.parse_args()
@@ -211,7 +220,7 @@ args = parser.parse_args()
 #################################################################################################
 if args.verbose == 1:
     logging.basicConfig(level=logging.INFO)
-    logging.debug(
+    logging.info(
         "################## Starting - With informational Logging ##################"
     )
 elif args.verbose == 2:
@@ -225,6 +234,80 @@ else:
 #################################################################################################
 # ARG Parsing and Sorting                                                                       #
 #################################################################################################
+# Parse .env file
+try:
+    args.env = env_file
+except NameError:
+    pass
+else:
+    pass
+if not args.env is None:
+    try:
+        with open(args.env, "r", encoding="utf-8") as f:
+            env = dict(
+                tuple(
+                    line.replace("\n", "")
+                    .split("#")[0]
+                    .split(" ")[0]
+                    .split("=", maxsplit=1)
+                )
+                for line in f.readlines()
+                if not line.startswith("#")
+            )
+            try:
+                args.api_user = env["APIUSER"]
+            except KeyError:
+                logging.info("No Entry 'APIUSER' found - setting to 'None'")
+                args.api_user = None
+            except NameError:
+                logging.info("No Entry 'APIUSER' found - setting to 'None'")
+                args.api_user = None
+            try:
+                args.api_pwd = env["APIPWD"]
+            except KeyError:
+                logging.info("No Entry 'APIPWD' found - setting to 'None'")
+                args.api_pwd = None
+            except NameError:
+                logging.info("No Entry 'APIPWD' found - setting to 'None'")
+                args.api_pwd = None
+            try:
+                args.key = env["APIKEY"]
+            except KeyError:
+                logging.info("No Entry 'APIKEY' found - setting to 'None'")
+                args.key = None
+            except NameError:
+                logging.info("No Entry 'APIKEY' found - setting to 'None'")
+                args.key = None
+            try:
+                args.api_server = env["APISERVER"]
+            except KeyError:
+                logging.info("No Entry 'APISERVER' found - setting to 'None'")
+                args.api_server = None
+            except NameError:
+                logging.info("No Entry 'APISERVER' found - setting to 'None'")
+                args.api_server = None
+            try:
+                args.context = env["CONTEXT"]
+            except KeyError:
+                logging.info("No Entry 'CONTEXT' found - setting to 'None'")
+                args.context = None
+            except NameError:
+                logging.info("No Entry 'CONTEXT' found - setting to 'None'")
+                args.context = None
+            try:
+                # if OUTFILE given, overriding cli argument
+                args.outfile = env["OUTFILE"]
+            except KeyError:
+                logging.info("No Entry 'OUTFILE' found - setting to 'args.outfile' - uses command line argument")
+                args.outfile = args.outfile
+            except NameError:
+                logging.info("No Entry 'OUTFILE' found - setting to 'args.outfile' - uses command line argument")
+                args.outfile = args.outfile
+
+    except FileNotFoundError:
+        sys.exit(
+            f"File {args.env} not found. You may create one by cloning env.example and submit filename after -E/--env-file."
+        )
 
 # arg api_server static or cli (cli overrides)
 if not args.api_server is None:
@@ -240,8 +323,9 @@ else:
         sys.exit("No API Server given!")
 
 ############################################################################
-##### API Authentication #####
+##### API Authentication Data #####
 # check if api_user is given inside file or cli arguments. cli args override
+
 if not args.api_user is None:
     api_user = args.api_user
 else:
@@ -513,7 +597,7 @@ def fun_build_request():
                 request = {"limit": 100, "details-level": "full"}
         case "show-package":
             request = {"name": args.objectname}
-        case "test":
+        case "show-session":
             request = {}
         case "show-simple-gateway":
             if args.objectname:
@@ -522,27 +606,27 @@ def fun_build_request():
                 request = {"details-level": "full", "filter": cfilter}
         case "show-simple-cluster":
             if args.objectname:
-                request = { "details-level": "full", "name": args.objectname}
+                request = {"details-level": "full", "name": args.objectname}
             elif cfilter:
-                request = { "details-level": "full", "filter": cfilter}
+                request = {"details-level": "full", "filter": cfilter}
 
         case "show-host":
             if args.objectname:
-                request = { "details-level": "full", "name": args.objectname}
+                request = {"details-level": "full", "name": args.objectname}
             elif cfilter:
-                request = { "details-level": "full", "filter": cfilter}
+                request = {"details-level": "full", "filter": cfilter}
 
         case "show-network":
             if args.objectname:
-                request = { "details-level": "full", "name": args.objectname}
+                request = {"details-level": "full", "name": args.objectname}
             elif cfilter:
-                request = { "details-level": "full", "filter": cfilter}
+                request = {"details-level": "full", "filter": cfilter}
 
         case "show-group":
             if args.objectname:
-                request = { "details-level": "full", "name": args.objectname}
+                request = {"details-level": "full", "name": args.objectname}
             elif cfilter:
-                request = { "details-level": "full", "filter": cfilter}
+                request = {"details-level": "full", "filter": cfilter}
 
         case _:
             if cfilter:
@@ -555,7 +639,6 @@ def fun_build_request():
 def fun_apicomm(request, command):
     """Communication with API"""
     res_api = client.api_call(command, request)
-    # if not command == "show-session":
     if not res_api.success:
         match res_api.status_code:
             case 400:
@@ -601,12 +684,7 @@ def fun_apicomm(request, command):
 
 def fun_objectwork(objects, apicommand, exportselect):
     """working with extracted objects"""
-    meta=[
-            "last-modify-time",
-            "last-modifier",
-            "creation-time",
-            "creator"
-            ]
+    meta = ["last-modify-time", "last-modifier", "creation-time", "creator"]
 
     if apicommand == "show-packages":
         objects = objects["packages"]
@@ -616,14 +694,14 @@ def fun_objectwork(objects, apicommand, exportselect):
         try:
             objects["uid"]
         except KeyError as e:
-            sys.exit("Failure %s in parsing output\n%s",e, objects)
+            sys.exit("Failure %s in parsing output\n%s", e, objects)
         else:
             allowed = list(objects.keys()) + meta
     else:
         allowed = list(objects[0].keys()) + meta
-    if not exportselect in [None,"all"]:
+    if not exportselect in [None, "all"]:
         # checking wanted output values
-        fieldnames=[]
+        fieldnames = []
         exportselect = exportselect.replace(" ", "").split(",")
         for value in exportselect:
             if not value in allowed:
@@ -634,7 +712,7 @@ def fun_objectwork(objects, apicommand, exportselect):
                 )
             else:
                 fieldnames.append(value)
-    elif not exportselect == ['all']:
+    elif not exportselect == ["all"]:
         fieldnames = allowed
     else:
         # default tables
@@ -782,8 +860,9 @@ def fun_objectwork(objects, apicommand, exportselect):
         "show-package",
         "show-host",
         "show-network",
-        "show-group"
-        ]:
+        "show-group",
+        "show-unused-objects"
+    ]:
         objects = [objects]
     for o in objects:
         row = []
@@ -851,11 +930,11 @@ def fun_objectwork(objects, apicommand, exportselect):
                 case _:
                     try:
                         o[field]
-                    except:
+                    except KeyError:
                         if apicommand.startswith("show-updatable-objects"):
                             try:
                                 row.append(o["additional-properties"][field])
-                            except:
+                            except KeyError:
                                 logging.debug(
                                     "FAILURE: no additional-properties fields found"
                                 )
@@ -866,9 +945,11 @@ def fun_objectwork(objects, apicommand, exportselect):
                     else:
                         row.append(o[field])
         rows.append(row)
-        
+
     logging.debug("OK - Work is done, moving on to create output")
-    logging.info("OK - Work is done, moving on to create output (%s line/-s)",len(rows)-1)
+    logging.info(
+        "OK - Work is done, moving on to create output (%s line/-s)", len(rows) - 1
+    )
     return rows, fieldnames
 
 
@@ -903,13 +984,13 @@ def fun_policywork(rulebase, policy, objects):
             ]
             policy.append(f)
             try:
-                rbase=line["rulebase"]
+                rbase = line["rulebase"]
             except:
-                logging.debug("%s seems to be an empty section", {line['name']})
+                logging.debug("%s seems to be an empty section", {line["name"]})
                 pass
             else:
                 for rule in rbase:
-                    f=fun_readpolicy(rule, objects)
+                    f = fun_readpolicy(rule, objects)
                     policy.append(f)
                     try:
                         rule["inline-layer"]
@@ -917,24 +998,28 @@ def fun_policywork(rulebase, policy, objects):
                         pass
                     else:
                         for a in objects:
-                            inlinecontent = {"details-level":"full"}
-                            if a["uid"]==rule["inline-layer"]:
-                                inlinecontent["name"]=a["name"]
+                            inlinecontent = {"details-level": "full"}
+                            if a["uid"] == rule["inline-layer"]:
+                                inlinecontent["name"] = a["name"]
                                 break
-                        inlinebase=fun_apicomm(inlinecontent,"show-access-rulebase").data
-                        il_rulebase=inlinebase["rulebase"]
+                        inlinebase = fun_apicomm(
+                            inlinecontent, "show-access-rulebase"
+                        ).data
+                        il_rulebase = inlinebase["rulebase"]
                         for items in inlinebase["objects-dictionary"]:
                             objects.append(items)
                         while not inlinebase["to"] == inlinebase["total"]:
-                            inlinecontent["offset"]=inlinebase["to"]
-                            inlinebase=fun_apicomm(inlinecontent,"show-access-rulebase")
+                            inlinecontent["offset"] = inlinebase["to"]
+                            inlinebase = fun_apicomm(
+                                inlinecontent, "show-access-rulebase"
+                            )
                             for items in inlinebase["rulebase"]:
                                 il_rulebase.append(items)
                             for items in inlinebase["objects-dictionary"]:
                                 objects.append(items)
                         for r in il_rulebase:
-                            if r["type"]=="access-section":
-                                f=[
+                            if r["type"] == "access-section":
+                                f = [
                                     "section",
                                     "",
                                     r["name"],
@@ -955,19 +1040,21 @@ def fun_policywork(rulebase, policy, objects):
                                     "",
                                     "",
                                     "",
-                                    "Length:"+str(len(r["rulebase"]))
-                                    ]
+                                    "Length:" + str(len(r["rulebase"])),
+                                ]
                                 policy.append(f)
                                 for subrule in r["rulebase"]:
-                                    subrule["rule-number"]=f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
-                                    f=fun_readpolicy(
-                                        subrule, 
-                                        objects)
+                                    subrule["rule-number"] = (
+                                        f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
+                                    )
+                                    f = fun_readpolicy(subrule, objects)
                                     policy.append(f)
-                            elif r["type"]=="access-rule":
-                                subrule=r
-                                subrule["rule-number"]=f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
-                                f=fun_readpolicy(subrule, objects)
+                            elif r["type"] == "access-rule":
+                                subrule = r
+                                subrule["rule-number"] = (
+                                    f"""{rule["rule-number"]}.{subrule["rule-number"]}"""
+                                )
+                                f = fun_readpolicy(subrule, objects)
                                 policy.append(f)
 
         elif line["type"] == "access-rule":
@@ -1189,7 +1276,7 @@ def fun_writepolicy(policy, objects):
     ]
     for i, o in enumerate(objects):
 
-# extracting groups attribute
+        # extracting groups attribute
 
         try:
             o["groups"]
@@ -1202,7 +1289,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["groups"] = "\n".join([ii for ii in groups])  # groups
             groups = list()
 
-# extracting members attribute
+        # extracting members attribute
 
         try:
             o["members"]
@@ -1228,7 +1315,7 @@ def fun_writepolicy(policy, objects):
                         members.append(c["name"])
                 objects[i]["members"] = "\n".join([ii for ii in members])
 
-# extracting networks from Access Role object
+        # extracting networks from Access Role object
 
         try:
             o["networks"]
@@ -1246,7 +1333,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["networks"] = "\n".join([ii for ii in networks])  # exclude
             networks = list()
 
-# extracting users from Access Role object
+        # extracting users from Access Role object
 
         try:
             o["users"]
@@ -1264,7 +1351,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["users"] = "\n".join([ii for ii in users])  # exclude
             users = list()
 
-# extracting machines from Access Role object
+        # extracting machines from Access Role object
 
         try:
             o["machines"]
@@ -1282,7 +1369,7 @@ def fun_writepolicy(policy, objects):
                 objects[i]["machines"] = "\n".join([ii for ii in machines])  # exclude
                 machines = list()
 
-# extracting remote-access-client from Access Role object
+        # extracting remote-access-client from Access Role object
 
         try:
             o["remote-access-client"]
@@ -1303,7 +1390,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["remote-access-client"] = "\n".join([ii for ii in clients])
             clients = list()
 
-# extracting groups with exclusions
+        # extracting groups with exclusions
 
         try:
             o["include"]
@@ -1339,7 +1426,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["except"] = "\n".join([ii for ii in exclude])
             exclude = list()
 
-# extracting tags
+        # extracting tags
 
         try:
             o["tags"]
@@ -1354,7 +1441,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["tags"] = "\n".join([ii for ii in tags])  # tags
             tags = list()
 
-# extracting data-center-queries
+        # extracting data-center-queries
 
         try:
             o["data-centers"]
@@ -1373,7 +1460,7 @@ def fun_writepolicy(policy, objects):
             objects[i]["data-centers"] = "\n".join([ii for ii in datacenters])
             datacenters = list()
 
-# extracting meta infos
+        # extracting meta infos
 
         try:
             o["meta-info"]
@@ -1388,20 +1475,26 @@ def fun_writepolicy(policy, objects):
                 try:
                     objects[i]["validation-state"] = o["meta-info"]["validation-state"]
                 except Exception as e:
-                    logging.debug("Exception while extracting validation-state:\n %s", e)
+                    logging.debug(
+                        "Exception while extracting validation-state:\n %s", e
+                    )
 
-# extracting last-modified-time
+            # extracting last-modified-time
             try:
                 o["meta-info"]["last-modify-time"]
             except KeyError:
                 pass
             else:
                 try:
-                    objects[i]["last-modify-time"] = o["meta-info"]["last-modify-time"]["iso-8601"]
+                    objects[i]["last-modify-time"] = o["meta-info"]["last-modify-time"][
+                        "iso-8601"
+                    ]
                 except Exception as e:
-                    logging.debug("Exception while extracting last modified time:\n %s", e)
+                    logging.debug(
+                        "Exception while extracting last modified time:\n %s", e
+                    )
 
-# extracting last-modifier
+            # extracting last-modifier
             try:
                 o["meta-info"]["last-modifier"]
             except KeyError:
@@ -1412,18 +1505,20 @@ def fun_writepolicy(policy, objects):
                 except Exception as e:
                     logging.debug("Exception while extracting last modifier:\n %s", e)
 
-# extracting creation-time
+            # extracting creation-time
             try:
                 o["meta-info"]["creation-time"]
             except KeyError:
                 pass
             else:
                 try:
-                    objects[i]["creation-time"] = o["meta-info"]["creation-time"]["iso-8601"]
+                    objects[i]["creation-time"] = o["meta-info"]["creation-time"][
+                        "iso-8601"
+                    ]
                 except Exception as e:
                     logging.debug("Exception while extracting creation time:\n %s", e)
 
-# extracting creator
+            # extracting creator
             try:
                 o["meta-info"]["creator"]
             except KeyError:
@@ -1448,7 +1543,7 @@ def fun_writepolicy(policy, objects):
             max_row = dfpolicy.shape[0]
             max_col = dfpolicy.shape[1]
             sheet.auto_filter.ref = f"A1:{get_column_letter(max_col)}{max_row}"
-                #"$A$1:$"+str(get_column_letter(sheet.max_column))+"$" + str(sheet.max_row))
+            # "$A$1:$"+str(get_column_letter(sheet.max_column))+"$" + str(sheet.max_row))
 
             # Style auf Spalte A anwenden
             for cell in sheet["A"]:
@@ -1462,20 +1557,19 @@ def fun_writepolicy(policy, objects):
                     cell.alignment = Alignment(wrap_text=True, vertical="top")
                     maxlen = max(maxlen, get_max_char_per_line(cell))
                 # Setze die Spaltenbreite basierend auf der maximalen Zeichenanzahl pro Zeile
-                sheet.column_dimensions[get_column_letter(i)].width = maxlen+5
+                sheet.column_dimensions[get_column_letter(i)].width = maxlen + 5
 
             # formatting section lines
             fsectionrow = PatternFill(fill_type="solid", bgColor="ffff6347")
             rulesection = Rule(
                 type="expression",
                 dxf=DifferentialStyle(fill=fsectionrow),
-                stopIfTrue=False
+                stopIfTrue=False,
             )
             rulesection.formula = ["$A2='section'"]
             sheet.conditional_formatting.add(
-                f"$A$2:${get_column_letter(max_col)}${max_row}",
-                rulesection
-                )
+                f"$A$2:${get_column_letter(max_col)}${max_row}", rulesection
+            )
             # formatting disabled rules
             fdisabledrow = PatternFill(fill_type="solid", bgColor="ff949494")
             ruledisabled = Rule(
@@ -1485,15 +1579,16 @@ def fun_writepolicy(policy, objects):
             )
             ruledisabled.formula = ["$B2=FALSE"]
             sheet.conditional_formatting.add(
-                f"$A$2:${get_column_letter(max_col)}${max_row}",ruledisabled)
+                f"$A$2:${get_column_letter(max_col)}${max_row}", ruledisabled
+            )
 
             for a in dfobjects["type"].drop_duplicates().to_list():
                 writer.book.create_sheet(a)
-                sheet=writer.book[a]
+                sheet = writer.book[a]
                 try:
-                    dfobjects[dfobjects["type"] == a].dropna(axis=1, how='all').to_excel(
-                                writer, index=False, sheet_name=a
-                            )
+                    dfobjects[dfobjects["type"] == a].dropna(
+                        axis=1, how="all"
+                    ).to_excel(writer, index=False, sheet_name=a)
                     sheet.auto_filter.ref = f"A1:{get_column_letter(max_col)}{max_row}"
 
                     # Style auf Spalte A anwenden
@@ -1510,13 +1605,11 @@ def fun_writepolicy(policy, objects):
                         # Setze die Spaltenbreite basierend auf der maximalen Zeichenanzahl
                         sheet.column_dimensions[get_column_letter(i)].width = maxlen
                 except:
-                    sys.exit("Problem during writing Worksheet for %s",a)
+                    sys.exit("Problem during writing Worksheet for %s", a)
 
-            dfobjects.dropna(axis=1, how='all').to_excel(
-                writer,
-                index=False,
-                sheet_name="all_objects"
-                )
+            dfobjects.dropna(axis=1, how="all").to_excel(
+                writer, index=False, sheet_name="all_objects"
+            )
 
             writer.book.save(outfile)
 
@@ -1555,11 +1648,12 @@ def fun_writepolicy(policy, objects):
     else:
         print("")
 
+
 def get_max_char_per_line(cell):
     """function used to calculate max width for a cell/columns"""
     if cell.value is None:
         return 0
-    lines = str(cell.value).split('\n')
+    lines = str(cell.value).split("\n")
     return max(len(line) for line in lines)
 
 
@@ -1625,14 +1719,26 @@ Policy Targets:\t{targets}
                 )
                 print("-----------")
         case "show-session":
-            print(
-                f"""
-                Connection state:\t\tSuccess:{result.success} ({result.status_code})
-                Server:\t\t\t\t{result.data["connected-server"]["name"]}
-                User:\t\t\t\t{result.data["user-name"]}
-                From:\t\t\t\t{result.data["ip-address"]}
-                """
-            )
+            try:
+                result.data["connected-server"]["name"]
+            except KeyError:
+                print(
+                    f"""
+                    Connection state:\t\t\tSuccess:{result.success} ({result.status_code})
+                    Server:\t\t\t\t#supressed by API, ReadOnly
+                    User:\t\t\t\t{result.data["user-name"]}
+                    From:\t\t\t\t{result.data["ip-address"]}
+                    """
+                )
+            else:
+                print(
+                    f"""
+                    Connection state:\t\t\tSuccess:{result.success} ({result.status_code})
+                    Server:\t\t\t\t{result.data["connected-server"]["name"]}
+                    User:\t\t\t\t{result.data["user-name"]}
+                    From:\t\t\t\t{result.data["ip-address"]}
+                    """
+                )
 
 
 def fun_writeobjects(rows, fieldnames):
@@ -1654,12 +1760,17 @@ def fun_writeobjects(rows, fieldnames):
         print(f"Information have been written to {outfile} - DONE!")
     else:
         if "pandas" in sys.modules:
-            pandas.options.display.max_rows = 100 # chosing when to ommit output
-            pandas.options.display.min_rows = None # chosing when to ommit output
+            pandas.options.display.max_rows = 100  # chosing when to ommit output
+            pandas.options.display.min_rows = None  # chosing when to ommit output
             print(pandas.DataFrame(rows[1:], columns=fieldnames))
-            if len(pandas.DataFrame(rows[1:], columns=fieldnames)) > pandas.options.display.max_rows:
-                print(f"""More then {pandas.options.display.max_rows} rows, so output is ommitted!
-Refine filter (-f) or export to file to get the complete result.""")
+            if (
+                len(pandas.DataFrame(rows[1:], columns=fieldnames))
+                > pandas.options.display.max_rows
+            ):
+                print(
+                    f"""More then {pandas.options.display.max_rows} rows, so output is ommitted!
+Refine filter (-f) or export to file to get the complete result."""
+                )
         else:
             for row in rows:
                 print(row)
@@ -1687,7 +1798,7 @@ if __name__ == "__main__":
                 sys.exit(
                     f"""Connection failed!
 Error: {e.strerror}
-Please check arguments / server to connect / connectivity!"""
+Please check arguments / server to connect / connectivity to {args.api_server}!"""
                 )
             if not login_res.success:
                 sys.exit("Login not possible")
@@ -1700,7 +1811,7 @@ Please check arguments / server to connect / connectivity!"""
                 sys.exit(
                     f"""Connection failed!
 Error: {e.strerror}
-Please check arguments / server to connect / connectivity!"""
+Please check arguments / server to connect / connectivity to {args.api_server}!"""
                 )
             if not login_res.success:
                 sys.exit("Login not possible")
@@ -1778,22 +1889,15 @@ Please check arguments / server to connect / connectivity!"""
                                          Allowed options are: {servicetypes}.
                                          Using a service type is mandatory"""
                                 )
-            elif apicommand in ["show-simple-gateway","show-simple-cluster"]:
+            elif apicommand in ["show-simple-gateway", "show-simple-cluster"]:
                 tmp = fun_apicomm(content, apicommand).data
                 objects = tmp
-                #objects = tmp["objects"]
                 if not len(objects) == 0:
-                    # while not tmp["to"] == tmp["total"]:
-                    #     conttemp = content
-                    #     conttemp["offset"] = tmp["to"]
-                    #     tmp = fun_apicomm(conttemp, apicommand).data
-                    #     for o in tmp["objects"]:
-                    #         objects.append(o)
                     rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
                     fun_writeobjects(rows, fieldnames)
                 else:
                     print(f"empty Response for {apicommand}")
-            elif apicommand in ["show-host","show-network","show-group"]:
+            elif apicommand in ["show-host", "show-network", "show-group"]:
                 tmp = fun_apicomm(content, apicommand).data
                 objects = tmp
                 rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
@@ -1817,7 +1921,5 @@ Please check arguments / server to connect / connectivity!"""
                     fun_writeobjects(rows, fieldnames)
                 else:
                     sys.exit(f"empty Response for {apicommand}")
-                # rows, fieldnames = fun_objectwork(objects, apicommand, exportselect)
-                # fun_writeobjects(rows, fieldnames)
         else:
             sys.exit("Given arguments are not supported (yet). See Manual/Readme/help")

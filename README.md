@@ -4,7 +4,6 @@
 
 Script for gathering multiple informations out of a Check Point Management Server like "show networks", "show updatable objects" or exporting an access policy directly into XLSX file
 
-
 ## Usage and examples
 
 python cp_multitool show packages

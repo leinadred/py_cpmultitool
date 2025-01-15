@@ -43,6 +43,7 @@ python cp_multitool.py -f auto_feed -e name,uid,comments,creator show networks
 #### command line arguments
 
 - -h: printing built in Help
+- -E: define evironment file, where Login Data and others can be found (no -U/-P/-K/-o/-c needed)
 - -H: Check Point Management Server to talk to
 - -U: admin username - for all functionalities a "Read Only" permission is enough - but for "test". "show session" seems to be something "special"
 - -K: set, when using API Key (with no user). Otherwise you will be asked for a user to enter (leaving blank works too, but when executing automatically...)

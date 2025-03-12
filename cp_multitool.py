@@ -1593,7 +1593,8 @@ def fun_writepolicy(policy, objects):
             sheet.conditional_formatting.add(
                 f"$A$2:${get_column_letter(max_col)}${max_row}", innerlayer
             )
-
+            # End of Formatting Rules
+            
             for a in dfobjects["type"].drop_duplicates().to_list():
                 writer.book.create_sheet(a)
                 sheet = writer.book[a]

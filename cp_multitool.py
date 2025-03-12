@@ -1560,18 +1560,18 @@ def fun_writepolicy(policy, objects):
                 sheet.column_dimensions[get_column_letter(i)].width = maxlen + 5
 
             # formatting section lines
-            fsectionrow = PatternFill(fill_type="solid", bgColor="ffff6347")
+            fsectionrow = PatternFill(fill_type="solid", bgColor="FFFFCC")
             rulesection = Rule(
                 type="expression",
                 dxf=DifferentialStyle(fill=fsectionrow),
                 stopIfTrue=False,
             )
-            rulesection.formula = ["$A2='section'"]
+            rulesection.formula = ["$A2=\"section\""]
             sheet.conditional_formatting.add(
                 f"$A$2:${get_column_letter(max_col)}${max_row}", rulesection
             )
             # formatting disabled rules
-            fdisabledrow = PatternFill(fill_type="solid", bgColor="ff949494")
+            fdisabledrow = PatternFill(fill_type="solid", bgColor="C0C0C0")
             ruledisabled = Rule(
                 type="expression",
                 dxf=DifferentialStyle(fill=fdisabledrow),
@@ -1580,6 +1580,18 @@ def fun_writepolicy(policy, objects):
             ruledisabled.formula = ["$B2=FALSE"]
             sheet.conditional_formatting.add(
                 f"$A$2:${get_column_letter(max_col)}${max_row}", ruledisabled
+            )
+
+            # formatting lines with "inner layer"
+            inlinelayerrow = PatternFill(fill_type="solid", bgColor="CCFFFF")
+            innerlayer = Rule(
+                type="expression",
+                dxf=DifferentialStyle(fill=inlinelayerrow),
+                stopIfTrue=False,
+            )
+            innerlayer.formula = ["$J2=\"['Inner Layer']\""]
+            sheet.conditional_formatting.add(
+                f"$A$2:${get_column_letter(max_col)}${max_row}", innerlayer
             )
 
             for a in dfobjects["type"].drop_duplicates().to_list():

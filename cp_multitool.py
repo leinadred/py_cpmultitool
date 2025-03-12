@@ -1302,7 +1302,7 @@ def fun_writepolicy(policy, objects):
             except:
                 try:
                     o["members"][0]["name"]
-                except TypeError:
+                except:
                     for c in o["members"]:
                         try:
                             for o in objects:
@@ -1378,16 +1378,17 @@ def fun_writepolicy(policy, objects):
         else:
             clients = list()
             try:
-                objects[i]["remote-access-client"]["name"]
-            except KeyError:
+                #objects[i]["remote-access-client"]["name"]
+                o["remote-access-client"]["name"]
+            except:
                 for c in o["remote-access-client"]:
                     clients.append(c["name"])
-                objects[i]["remote-access-client"] = "\n".join([ii for ii in clients])
+                o["remote-access-client"] = "\n".join([ii for ii in clients])
             else:
-                objects[i]["remote-access-client"] = objects[i]["remote-access-client"][
+                o["remote-access-client"] = o["remote-access-client"][
                     "name"
                 ]
-            objects[i]["remote-access-client"] = "\n".join([ii for ii in clients])
+            o["remote-access-client"] = "\n".join([ii for ii in clients])
             clients = list()
 
         # extracting groups with exclusions
